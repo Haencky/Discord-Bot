@@ -42,8 +42,10 @@ def scrape() -> pd.DataFrame:
         Scrape the Internet for next weeks Anime shedule
         """
         today = datetime.today()
-        year = today.year
-        week = int(today.isocalendar().week) + 1
+        additional_days = days_till_sunday()
+        target = today + timedelta(days=additional_days) # get the next week sunday
+        year = target.year
+        week = int(target.isocalendar().week)
         days = {
             'Montag': 'timetable-column odd Monday',
             'Dienstag': 'timetable-column even Tuesday',
@@ -80,3 +82,13 @@ def scrape() -> pd.DataFrame:
         df = pd.DataFrame(dict_for_df)
         print(f"{today}: Scraped {len(df)} entries")
         return df
+
+def days_till_sunday() -> int:
+    """
+    Get the number of days till sunday
+    """
+    today = datetime.today()
+    if today.weekday() == 6: # if sunday return 7
+        return 7
+    else:
+        return 6 - today.weekday() + 7 # return the number of days till sunday + one week
