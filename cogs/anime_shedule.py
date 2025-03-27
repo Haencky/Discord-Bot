@@ -1,9 +1,11 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
+from discord.ext.pages import Page, Paginator
+from discord import Embed, Colour, File
 from discord.commands import slash_command, context
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta, time
 
 class AnimeShedule(commands.Cog):
     """
@@ -11,17 +13,34 @@ class AnimeShedule(commands.Cog):
     """
     def __init__(self, bot):
         self.bot = bot
+        self.df = pd.DataFrame() # dataframe for the shedule
 
-    @slash_command(name='anime-info', description='Get the anime shedule for the week')
-    async def anime_shedule(self, ctx: context.ApplicationContext):
-        df  = scrape()
-        await ctx.respond(f'Hallo {ctx.author.mention}!')
+    @commands.Cog.listener()
+    async def on_ready(self):
+         """
+         Start loop on ready and fetch once
+         """
+         self.fetch_anime_shedule.start() # staert the loop
+         self.df = scrape() # scrape once, to ensure the df is not empty (if time is already passed)
+
+    @tasks.loop(time=time(hour=0, minute=0,tzinfo=timezone.utc))
+    async def fetch_anime_shedule(self):
+        """
+        Fetch the Anime shedule every week
+        """
+        if datetime.today().weekday() == 6: # if sunday fetch data
+            self.df  = scrape()
+        else:
+             pass
     
 def setup(bot):
     bot.add_cog(AnimeShedule(bot))
 
 
 def scrape() -> pd.DataFrame:
+        """"
+        Scrape the Internet for next weeks Anime shedule
+        """
         today = datetime.today()
         year = today.year
         week = int(today.isocalendar().week) + 1
@@ -59,5 +78,5 @@ def scrape() -> pd.DataFrame:
             'Time': times
         }
         df = pd.DataFrame(dict_for_df)
-        print(df)
+        print(f"{today}: Scraped {len(df)} entries")
         return df
