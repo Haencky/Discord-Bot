@@ -14,10 +14,14 @@ class AnimeShedule(commands.Cog):
 
     @slash_command(name='anime-info', description='Get the anime shedule for the week')
     async def anime_shedule(self, ctx: context.ApplicationContext):
-        df  = self.scrape()
+        df  = scrape()
         await ctx.respond(f'Hallo {ctx.author.mention}!')
     
-    def scrape(self) -> pd.DataFrame:
+def setup(bot):
+    bot.add_cog(AnimeShedule(bot))
+
+
+def scrape() -> pd.DataFrame:
         today = datetime.today()
         year = today.year
         week = int(today.isocalendar().week) + 1
@@ -57,8 +61,3 @@ class AnimeShedule(commands.Cog):
         df = pd.DataFrame(dict_for_df)
         print(df)
         return df
-
-
-
-def setup(bot):
-    bot.add_cog(AnimeShedule(bot))
