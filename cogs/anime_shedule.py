@@ -13,8 +13,8 @@ class AnimeShedule(commands.Cog):
     """
     def __init__(self, bot):
         self.bot = bot
-        self.df = pd.DataFrame() # dataframe for the shedule
-        self.last_scrape = None
+        self.df: pd.DataFrame = pd.DataFrame() # dataframe for the shedule
+        self.last_scrape: date = None
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -22,7 +22,9 @@ class AnimeShedule(commands.Cog):
         Start loop on ready and fetch once
         """
         self.fetch_anime_shedule.start() # staert the loop
-        self.df, self.last_scrape = scrape() # scrape once, to ensure the df is not empty (if time is already passed)
+        self.df.to_csv('data/anime_shedule.csv', index=False) # read csv with last safed data after restart 
+        f = open('data/last_scrape.time', 'r') # read last scrape date after restart
+        self.last_scrape = date.fromisoformat(f.read()) # format the date to date object
 
     @tasks.loop(time=time(hour=0, minute=0,tzinfo=timezone.utc))
     async def fetch_anime_shedule(self):
@@ -31,6 +33,9 @@ class AnimeShedule(commands.Cog):
         """
         if date.today().weekday() == 6: # if sunday fetch data
             self.df, self.last_scrape  = scrape()
+            self.df.to_csv('data/anime_shedule.csv', index=False)
+            with open('data/last_scrape.time', 'w') as f:
+                f.write(str(self.last_scrape))
         else:
             pass
     
