@@ -13,7 +13,7 @@ class AnimeShedule(commands.Cog):
     """
     def __init__(self, bot):
         self.bot = bot
-        self.df: pd.DataFrame = pd.DataFrame() # dataframe for the shedule
+        self.df: pd.DataFrame = None  # dataframe for the shedule
         self.last_scrape: date = None
 
     @commands.Cog.listener()
@@ -21,12 +21,12 @@ class AnimeShedule(commands.Cog):
         """
         Start loop on ready and fetch once
         """
-        self.fetch_anime_shedule.start() # staert the loop
-        self.df.to_csv('data/anime_shedule.csv', index=False) # read csv with last safed data after restart 
+        self.fetch_anime_shedule.start() # start the loop
+        self.df = pd.read_csv('data/anime_shedule.csv', sep=',')
         f = open('data/last_scrape.time', 'r') # read last scrape date after restart
         self.last_scrape = date.fromisoformat(f.read()) # format the date to date object
 
-    @tasks.loop(time=time(hour=0, minute=0,tzinfo=timezone.utc))
+    @tasks.loop(time=time(hour=2, minute=0,tzinfo=timezone.utc))
     async def fetch_anime_shedule(self):
         """
         Fetch the Anime shedule every week
@@ -41,6 +41,11 @@ class AnimeShedule(commands.Cog):
     
     @slash_command(name="list_shedule", description="List the Anime shedule for the next week")
     async def list_shedule(self, ctx: context.ApplicationContext):
+        try:
+            self.check() # check if the shedule is up to date
+        except Exception as e:
+            await ctx.respond(f"Error: ```{e}```", ephemeral=True)
+            return
         """
         List the Anime shedule for the next week
         """
@@ -66,8 +71,15 @@ class AnimeShedule(commands.Cog):
                     embeds = [] # reset embeds for the next page
             pagegroups.append(PageGroup(pages=pages, label=f'{day} - {self.last_scrape + timedelta(days=days[day]-1)}'))       
 
-        paginator = Paginator(pages=pagegroups, show_menu=True, author_check=True, show_disabled=False, menu_placeholder='Tag wählen')
+        paginator = Paginator(pages=pagegroups, show_menu=True, author_check=True, show_disabled=False, menu_placeholder='Tag wählen', timeout=None)
         await paginator.respond(ctx.interaction)
+
+    def check(self) -> bool:
+        """
+        Check if the shedule is up to date
+        """
+        if date.today() - timedelta(days=date.today().weekday()) != self.last_scrape: # if last scrape was not this monday(-> not this weeks data)
+            raise Exception("Anime shedule is not up to date.\nFetching new data\n. Please try again later.")
 
 def setup(bot):
     bot.add_cog(AnimeShedule(bot))
@@ -122,7 +134,7 @@ def days_till_sunday() -> int:
     Get the number of days till sunday
     """
     today = date.today()
-    if today.weekday() == 6: # if sunday return 7
-        return 7
+    if today.weekday() == 6: # if sunday return 0
+        return 0
     else:
         return 6 - today.weekday() # return the number of days till sunday
